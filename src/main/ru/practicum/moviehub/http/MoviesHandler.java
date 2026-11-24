@@ -86,7 +86,7 @@ public class MoviesHandler extends BaseHttpHandler {
         }
     }
 
-    private void MoviesHandler(HttpExchange httpEx) throws IOException {
+    private void handlePostMovie(HttpExchange httpEx) throws IOException {
         String contentType = httpEx.getRequestHeaders().getFirst("Content-Type");
         if (contentType == null || !contentType.toLowerCase().startsWith("application/json")) {
             sendError(httpEx, 415, "Неподдерживаемый тип контента: ожидается application/json");
