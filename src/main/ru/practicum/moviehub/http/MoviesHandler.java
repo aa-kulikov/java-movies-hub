@@ -6,10 +6,12 @@ import ru.practicum.moviehub.model.Movie;
 import ru.practicum.moviehub.store.MoviesStore;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Year;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class MoviesHandler extends BaseHttpHandler {
@@ -63,50 +65,44 @@ public class MoviesHandler extends BaseHttpHandler {
     }
 
     private Integer parseYearQueryParam(String query) {
-        String[] pairs = query.split("&");
-        if (pairs.length != 1) {
+        return Arrays.stream(query.split("&"))
+                .filter(pair -> !pair.isEmpty())
+                .map(pair -> pair.split("=", 2))
+                .filter(kv -> "year".equals(URLDecoder.decode(kv[0], StandardCharsets.UTF_8).trim()))
+                .findFirst()
+                .map(this::parseYearValue)
+                .orElse(null);
+    }
+
+    private Integer parseYearValue(String[] kv) {
+        if (kv.length != 2) {
             return null;
         }
-
-        String[] kv = pairs[0].split("=", 2);
-        if (kv.length != 2 || !"year".equals(kv[0])) {
-            return null;
-        }
-
         try {
-            return Integer.parseInt(kv[1]);
+            String decodedValue = URLDecoder.decode(kv[1], StandardCharsets.UTF_8).trim();
+            return Integer.parseInt(decodedValue);
         } catch (NumberFormatException exp) {
             return null;
         }
     }
 
-    private void handlePostMovie(HttpExchange httpEx) throws IOException {
+    private void MoviesHandler(HttpExchange httpEx) throws IOException {
         String contentType = httpEx.getRequestHeaders().getFirst("Content-Type");
         if (contentType == null || !contentType.toLowerCase().startsWith("application/json")) {
             sendError(httpEx, 415, "Неподдерживаемый тип контента: ожидается application/json");
             return;
         }
 
-        String body;
-        try (InputStream is = httpEx.getRequestBody()) {
-            body = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-        }
-
-        if (body.isBlank()) {
-            sendError(httpEx, 400, "Тело запроса не должно быть пустым");
-            return;
-        }
-
         Movie incoming;
-        try {
-            incoming = gson.fromJson(body, Movie.class);
+        try (InputStreamReader reader = new InputStreamReader(httpEx.getRequestBody(), StandardCharsets.UTF_8)) {
+            incoming = gson.fromJson(reader, Movie.class);
         } catch (JsonSyntaxException exp) {
             sendError(httpEx, 400, "Некорректный формат JSON");
             return;
         }
 
         if (incoming == null) {
-            sendError(httpEx, 400, "Некорректный формат JSON");
+            sendError(httpEx, 400, "Тело запроса не должно быть пустым или содержать null");
             return;
         }
 

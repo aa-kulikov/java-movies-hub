@@ -336,4 +336,38 @@ public class MoviesApiTest {
         // Проверяем, что присутствует непустое поле error
         assertNotNull(apiHelper.parseError(resp).getError());
     }
+
+    @Test
+    void getMoviesByYearWithExtraParamsReturn200() throws Exception {
+        store.add(new Movie("Джентльмены", 2019));
+        store.add(new Movie("Терминатор 2", 1991));
+
+        //Передаем year + доп. параметр
+        HttpResponse<String> resp = apiHelper.get("/movies?year=2019&sort=title");
+        List<Movie> movies = apiHelper.parseMovieList(resp);
+
+        //Общая проверка
+        assertJsonResponse(resp, 200);
+
+        //Проверяем, что фильтр по year отработал корректно
+        assertEquals(1, movies.size());
+        assertEquals("Джентльмены", movies.getFirst().getTitle());
+    }
+
+    @Test
+    void getMoviesByYearWithEncodedSpacesReturn200() throws Exception {
+        store.add(new Movie("Душа", 2020));
+        store.add(new Movie("Паразиты", 2019));
+
+        //Передаем year + закодированный пробел (%20)
+        HttpResponse<String> resp = apiHelper.get("/movies?year=2020%20");
+        List<Movie> movies = apiHelper.parseMovieList(resp);
+
+        //Общая проверка
+        assertJsonResponse(resp, 200);
+
+        //Проверяем, что фильтр по year отработал корректно
+        assertEquals(1, movies.size());
+        assertEquals("Душа", movies.getFirst().getTitle());
+    }
 }
